@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+motor
+pydantic
+python-jose
+firebase-admin
+langchain
+langgraph
+pymongo
+python-dotenv
+pytest
+httpx
+google-genai
