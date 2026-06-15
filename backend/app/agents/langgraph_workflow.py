@@ -1,8 +1,6 @@
-"""LangGraph workflow orchestrator (skeleton)
+"""LangGraph workflow orchestrator
 
-This module sketches how LangGraph could orchestrate the agents. It does not
-include a real LangGraph integration; replace these stubs with actual
-LangGraph nodes/edges and runtime wiring in production.
+This module orchestrates the agents for generating personalized learning plans.
 """
 from app.agents.planner_agent import PlannerAgent
 from app.agents.teaching_agent import TeachingAgent
@@ -23,8 +21,23 @@ class LangGraphWorkflow:
         self.exam = ExamAgent()
         self.mentor = MentorAgent()
 
-    async def run_planner_flow(self, student_id: str, syllabus_bytes: bytes, content_type: str, datesheet_text: str):
-        parsed = await self.planner.analyze_syllabus(syllabus_bytes, content_type)
-        dates = await self.planner.analyze_datesheet(datesheet_text)
-        roadmap = await self.planner.generate_roadmap(student_id, parsed, dates)
+    async def run_planner_flow(self, student_id: str, syllabus_data, content_type: str, datesheet_text: str):
+        """Generate study roadmap from syllabus and datesheet"""
+        # Handle both bytes and string input
+        if isinstance(syllabus_data, bytes):
+            syllabus_text = syllabus_data.decode('utf-8')
+        else:
+            syllabus_text = str(syllabus_data)
+        
+        roadmap = await self.planner.generate_roadmap(student_id, syllabus_text, datesheet_text)
         return roadmap
+    
+    async def run_teaching_flow(self, student_id: str, topic: str, level: str = 'beginner', roadmap = None):
+        """Generate teaching content for a topic"""
+        lesson = await self.teaching.teach_concept(student_id, topic, level, roadmap)
+        return lesson
+    
+    async def run_assessment_flow(self, student_id: str, subject: str, difficulty: str = 'medium', roadmap = None):
+        """Generate quiz for assessment"""
+        quiz = await self.assessment.generate_quiz(student_id, subject, difficulty, roadmap)
+        return quiz

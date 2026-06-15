@@ -16,6 +16,10 @@ const aiService = {
   generateQuiz: async (student_id, subject_id, difficulty = 'medium') => {
     const resp = await api.post('/api/quiz/generate', { student_id, subject_id, difficulty })
     return resp.data
+  },
+  submitQuizAnswers: async (quiz_id, answers, questions = []) => {
+    const resp = await api.post('/api/quiz/submit', { quiz_id, answers, questions })
+    return resp.data
   }
 }
 

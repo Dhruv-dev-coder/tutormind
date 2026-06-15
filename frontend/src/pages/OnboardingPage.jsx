@@ -1,0 +1,163 @@
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '../services/apiService'
+
+export default function OnboardingPage() {
+  const [step, setStep] = useState(1) // 1: instructions, 2: syllabus, 3: datesheet, 4: generating
+  const [syllabusText, setSyllabusText] = useState('')
+  const [datesheetText, setDatesheetText] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const navigate = useNavigate()
+
+  const userInfo = JSON.parse(sessionStorage.getItem('tutormind_user') || '{}')
+  const studentId = userInfo.student_id
+
+  const handleNext = () => {
+    if (step < 3) {
+      setStep(step + 1)
+    } else {
+      submitOnboarding()
+    }
+  }
+
+  const submitOnboarding = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const resp = await api.post('/api/onboarding/initialize', {
+        student_id: studentId,
+        syllabus_text: syllabusText,
+        datesheet_text: datesheetText
+      })
+      
+      // Store roadmap in session
+      sessionStorage.setItem('tutormind_roadmap', JSON.stringify(resp.data.roadmap))
+      
+      // Navigate to dashboard
+      navigate('/dashboard')
+    } catch (e) {
+      setError(e?.response?.data?.detail || e?.message || 'Failed to initialize')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-black text-white">
+      <div className="max-w-3xl mx-auto px-6 py-12">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Welcome to TutorMind</h1>
+          <p className="text-gray-300">Let's create your personalized learning roadmap</p>
+        </div>
+
+        {/* Step Indicator */}
+        <div className="flex gap-2 mb-12">
+          {[1, 2, 3].map(s => (
+            <div key={s} className={`h-2 flex-1 rounded-full transition ${s <= step ? 'bg-indigo-500' : 'bg-gray-700'}`} />
+          ))}
+        </div>
+
+        {/* Step 1: Instructions */}
+        {step === 1 && (
+          <div className="bg-gray-800/50 rounded-lg p-8">
+            <h2 className="text-2xl font-semibold mb-4">Step 1: Understanding Your Learning Path</h2>
+            <div className="space-y-4 mb-8">
+              <div className="flex gap-4">
+                <div className="text-indigo-400 text-2xl">📚</div>
+                <div>
+                  <h3 className="font-semibold mb-1">Syllabus Analysis</h3>
+                  <p className="text-gray-300">Paste your course syllabus or curriculum. We'll break it down into manageable topics.</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="text-indigo-400 text-2xl">📅</div>
+                <div>
+                  <h3 className="font-semibold mb-1">Exam Schedule</h3>
+                  <p className="text-gray-300">Share your exam dates and deadlines for optimized scheduling.</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="text-indigo-400 text-2xl">🎯</div>
+                <div>
+                  <h3 className="font-semibold mb-1">Personalized Roadmap</h3>
+                  <p className="text-gray-300">Get a custom daily, weekly, and monthly study plan tailored to your needs.</p>
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={handleNext}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-lg font-semibold transition"
+            >
+              Get Started →
+            </button>
+          </div>
+        )}
+
+        {/* Step 2: Syllabus */}
+        {step === 2 && (
+          <div className="bg-gray-800/50 rounded-lg p-8">
+            <h2 className="text-2xl font-semibold mb-4">Step 2: Your Syllabus</h2>
+            <p className="text-gray-300 mb-4">Paste your course syllabus, topics, or curriculum details:</p>
+            <textarea 
+              value={syllabusText}
+              onChange={e => setSyllabusText(e.target.value)}
+              placeholder="Chapter 1: Introduction to...&#10;Chapter 2: Core Concepts...&#10;Chapter 3: Advanced Topics..."
+              className="w-full h-64 p-4 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500"
+            />
+            <div className="flex gap-3 mt-6">
+              <button 
+                onClick={() => setStep(1)}
+                className="flex-1 border border-gray-600 hover:border-indigo-500 px-6 py-3 rounded-lg font-semibold transition"
+              >
+                Back
+              </button>
+              <button 
+                onClick={handleNext}
+                disabled={!syllabusText.trim()}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Datesheet */}
+        {step === 3 && (
+          <div className="bg-gray-800/50 rounded-lg p-8">
+            <h2 className="text-2xl font-semibold mb-4">Step 3: Your Exam Schedule</h2>
+            <p className="text-gray-300 mb-4">Paste your exam dates, subjects, and deadlines:</p>
+            <textarea 
+              value={datesheetText}
+              onChange={e => setDatesheetText(e.target.value)}
+              placeholder="Math - June 15, 2024&#10;Science - June 22, 2024&#10;English - June 29, 2024"
+              className="w-full h-64 p-4 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500"
+            />
+            <div className="flex gap-3 mt-6">
+              <button 
+                onClick={() => setStep(2)}
+                className="flex-1 border border-gray-600 hover:border-indigo-500 px-6 py-3 rounded-lg font-semibold transition"
+              >
+                Back
+              </button>
+              <button 
+                onClick={handleNext}
+                disabled={loading || !datesheetText.trim()}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition"
+              >
+                {loading ? 'Generating...' : 'Generate Roadmap →'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-900/20 border border-red-600 text-red-200 rounded-lg p-4 mt-6">
+            {error}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

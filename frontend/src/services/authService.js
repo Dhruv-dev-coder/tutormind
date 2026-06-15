@@ -25,19 +25,19 @@ const authService = {
     ensureFirebase()
     const cred = await signInWithEmailAndPassword(auth, email, password)
     // verify with backend and attach auth header
-    try{ await authService.verifyWithBackend() }catch(e){}
+    try{ return await authService.verifyWithBackend() }catch(e){}
     return cred
   },
   signUpWithEmail: async (email, password, profile = {}) => {
     ensureFirebase()
     const userCred = await createUserWithEmailAndPassword(auth, email, password)
-    try{ await authService.verifyWithBackend() }catch(e){}
+    try{ return await authService.verifyWithBackend() }catch(e){}
     return userCred
   },
   signInWithGoogle: async () => {
     ensureFirebase()
     const cred = await signInWithPopup(auth, provider)
-    try{ await authService.verifyWithBackend() }catch(e){}
+    try{ return await authService.verifyWithBackend() }catch(e){}
     return cred
   },
   signOut: async () => {
@@ -58,9 +58,11 @@ const authService = {
     const idToken = await auth.currentUser.getIdToken()
     // send to backend verify endpoint
     try{
-      const resp = await api.post('/auth/verify', { id_token: idToken })
+      const resp = await api.post('/api/auth/verify', { id_token: idToken })
       // attach token for subsequent API calls
       setAuthToken(idToken)
+      // store user info including onboarding status
+      sessionStorage.setItem('tutormind_user', JSON.stringify(resp.data))
       return resp.data
     }catch(err){
       return null

@@ -35,18 +35,30 @@ async def verify_token(payload: TokenVerifyRequest):
     # Map or create a student record in MongoDB
     students = db['students']
     existing = await students.find_one({"firebase_uid": uid})
+    
+    is_first_time = False
     if not existing:
         # Create a minimal student mapping
+        is_first_time = True
         doc = {
             "firebase_uid": uid,
             "email": email,
             "name": name,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
+            "onboarded": False
         }
         res = await students.insert_one(doc)
         student_id = str(res.inserted_id)
     else:
         student_id = str(existing.get('_id'))
+        is_first_time = not existing.get("onboarded", False)
 
-    return TokenVerifyResponse(uid=uid, email=email, name=name, firebase_claims=decoded)
+    response = TokenVerifyResponse(uid=uid, email=email, name=name, firebase_claims=decoded)
+    
+    # Add custom fields for frontend routing
+    response.is_first_time = is_first_time
+    response.student_id = student_id
+    response.onboarded = existing.get("onboarded", False) if existing else False
+    
+    return response

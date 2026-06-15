@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import auth, student
 from app.api import planner, teaching, quiz, rag
-from app.api import notifications, analytics, mcp
+from app.api import notifications, analytics, mcp, onboarding
 
 app = FastAPI(title="TutorMind API")
 
@@ -39,6 +39,7 @@ app.include_router(quiz.router, prefix="/api/quiz")
 app.include_router(rag.router, prefix="/api/rag")
 app.include_router(notifications.router, prefix="/api/notifications")
 app.include_router(analytics.router, prefix="/api/analytics")
+app.include_router(onboarding.router, prefix="/api/onboarding")
 app.include_router(mcp.router, prefix="/api")
 
 @app.get("/api/health")

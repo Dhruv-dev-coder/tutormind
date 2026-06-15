@@ -11,3 +11,6 @@ class TokenVerifyResponse(BaseModel):
     email: Optional[str]
     name: Optional[str]
     firebase_claims: Optional[dict]
+    is_first_time: Optional[bool] = False
+    student_id: Optional[str] = None
+    onboarded: Optional[bool] = False
