@@ -6,8 +6,6 @@ Uses AI to create semester, monthly, weekly, and daily plans with chapter breakd
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
 from app.mcp import get_document_mcp, get_calendar_mcp
-from langchain.chat_models import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
 
 
 class PlannerAgent:

@@ -41,3 +41,19 @@ class LangGraphWorkflow:
         """Generate quiz for assessment"""
         quiz = await self.assessment.generate_quiz(student_id, subject, difficulty, roadmap)
         return quiz
+
+    async def run_progress_flow(self, student_id: str, event):
+        """Update progress from a learning event"""
+        return await self.progress.update_progress(student_id, event)
+
+    async def run_revision_flow(self, student_id: str, topic: str, start_date: str = None):
+        """Create spaced revision schedule for a topic"""
+        return await self.revision.create_spaced_revision_plan(student_id, topic, start_date)
+
+    async def run_exam_flow(self, student_id: str, subject: str, mode: str = "30_days"):
+        """Generate a mock test plan for exam preparation"""
+        return await self.exam.generate_mock_test(student_id, subject, mode)
+
+    async def run_mentor_flow(self, student_id: str, activity = None):
+        """Monitor activity and trigger mentor interventions"""
+        return await self.mentor.monitor_activity(student_id, activity)

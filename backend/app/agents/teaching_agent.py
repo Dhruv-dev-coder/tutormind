@@ -6,6 +6,14 @@ Integrates RAG for grounded responses and MCP tools for external resources.
 from typing import Dict, Any, List
 from datetime import datetime
 from app.mcp import get_tavily_mcp, get_youtube_mcp
+from app.agents.learning_intelligence import (
+    build_lesson_path,
+    dedupe_keep_order,
+    infer_learning_objectives,
+    normalize_level,
+    roadmap_topics,
+    topic_title,
+)
 
 
 class TeachingAgent:
@@ -15,10 +23,12 @@ class TeachingAgent:
 
     async def teach_concept(self, student_id: str, topic: str, level: str = 'beginner', roadmap: Dict[str, Any] = None) -> Dict[str, Any]:
         """Teach a concept with comprehensive explanations and examples"""
+        level = normalize_level(level)
         explanation = self._generate_explanation(topic, level)
         examples = await self.generate_examples(topic, count=3)
         resources = await self._find_resources(topic)
         exercises = self._generate_exercises(topic, level)
+        lesson_path = build_lesson_path(topic, level)
         
         return {
             "student_id": student_id,
@@ -26,81 +36,87 @@ class TeachingAgent:
             "level": level,
             "timestamp": datetime.utcnow().isoformat(),
             "explanation": explanation,
+            "learning_objectives": infer_learning_objectives(topic, level),
+            "lesson_path": lesson_path,
             "key_points": self._extract_key_points(explanation),
             "examples": examples,
             "exercises": exercises,
             "resources": resources,
             "next_topics": self._suggest_next_topics(topic, roadmap),
-            "estimated_learning_time": "45 minutes"
+            "estimated_learning_time": f"{sum(step['minutes'] for step in lesson_path)} minutes"
         }
 
     def _generate_explanation(self, topic: str, level: str) -> Dict[str, Any]:
         """Generate detailed explanation based on difficulty level"""
+        title = topic_title(topic)
         base_explanation = {
-            "beginner": f"Let's learn about {topic}. {topic} is a fundamental concept that forms the basis for many advanced topics.",
-            "intermediate": f"Building on the fundamentals of {topic}, we now explore deeper aspects and applications.",
-            "advanced": f"Advanced understanding of {topic} involves complex implementations and edge cases."
+            "beginner": f"Start with the big idea: {title} is easier when you connect the definition to one simple example before memorizing rules.",
+            "intermediate": f"Now connect {title} to problem patterns, exceptions, and method selection.",
+            "advanced": f"Advanced work on {title} focuses on multi-step reasoning, edge cases, and exam-time tradeoffs."
         }
         
         return {
             "overview": base_explanation.get(level, base_explanation["beginner"]),
-            "definition": f"{topic} is defined as a concept that encompasses multiple related ideas and principles.",
-            "why_important": f"Understanding {topic} is crucial because it forms the foundation for problem-solving and advanced topics.",
+            "definition": f"{title} is the set of rules, relationships, and reasoning patterns used to solve this class of problems.",
+            "why_important": f"Understanding {title} helps you identify the right method quickly instead of trying unrelated formulas or facts.",
             "real_world_applications": [
-                f"Application 1 of {topic} in industry",
-                f"Application 2 of {topic} in research",
-                f"Application 3 of {topic} in daily life"
+                f"Using {title} to model real situations",
+                f"Using {title} to compare possible solutions",
+                f"Using {title} to explain why an answer is reasonable"
             ],
-            "prerequisites": ["Basic mathematical concepts", "Logical thinking"],
+            "prerequisites": ["Core vocabulary", "Prior chapter fundamentals", "Step-by-step reasoning"],
             "difficulty_level": level
         }
 
     async def generate_examples(self, topic: str, count: int = 3) -> List[Dict[str, Any]]:
         """Generate worked examples for a topic"""
+        title = topic_title(topic)
         examples = []
         for i in range(count):
             examples.append({
                 "example_number": i + 1,
-                "problem": f"Example {i+1}: A practical problem related to {topic}",
+                "problem": f"Example {i+1}: Solve a practical {title} question with one clear constraint.",
                 "solution_steps": [
-                    f"Step 1: Identify what we know about {topic}",
-                    f"Step 2: Apply the principle of {topic}",
-                    f"Step 3: Calculate or derive the result",
-                    f"Step 4: Verify and interpret the answer"
+                    f"Step 1: Identify the given information and what {title} asks for",
+                    f"Step 2: Choose the rule or relationship that fits {title}",
+                    "Step 3: Work through the calculation or reasoning carefully",
+                    "Step 4: Check units, assumptions, and whether the answer makes sense"
                 ],
-                "answer": f"The result of Example {i+1}",
-                "explanation": f"This example demonstrates how {topic} is applied to solve real problems"
+                "answer": f"A complete answer for Example {i+1}",
+                "explanation": f"This example shows the thinking pattern behind {title}, not just the final result."
             })
         return examples
 
     async def _find_resources(self, topic: str) -> Dict[str, Any]:
         """Find external learning resources"""
+        academic_resources = await self.tavily.search_academic_resources(topic, limit=5)
+        tutorials = await self.youtube.find_tutorials(topic, max_results=3)
+        revision_videos = await self.youtube.find_revision_videos(topic, max_results=2)
+
         return {
-            "textbooks": [
-                {"title": f"Comprehensive Guide to {topic}", "author": "Expert Author", "pages": "150-200"},
-                {"title": f"Mastering {topic}", "author": "Professor Name", "pages": "50-75"}
-            ],
-            "online_courses": [
-                {"platform": "Khan Academy", "topic": topic, "duration": "2 hours"},
-                {"platform": "Coursera", "topic": topic, "duration": "1 week course"}
-            ],
-            "practice_sites": [
-                "practice-problems.com",
-                "interactive-learning.org"
-            ]
+            "academic": academic_resources,
+            "videos": dedupe_keep_order([video.get("url", "") for video in tutorials + revision_videos]),
+            "video_details": tutorials + revision_videos,
+            "source": "mcp"
         }
 
     def _generate_exercises(self, topic: str, level: str) -> List[Dict[str, Any]]:
         """Generate practice exercises with varying difficulty"""
+        title = topic_title(topic)
         exercises = []
-        for i in range(3):
+        prompts = {
+            "beginner": ["identify", "define", "solve a direct"],
+            "intermediate": ["compare", "apply", "explain an error in a"],
+            "advanced": ["prove or justify", "combine with another concept in a", "optimize a"],
+        }
+        for i, verb in enumerate(prompts.get(level, prompts["beginner"])):
             exercises.append({
                 "exercise_number": i + 1,
                 "difficulty": level,
-                "problem": f"Exercise {i+1}: {topic} problem requiring {level} understanding",
+                "problem": f"Exercise {i+1}: {verb} {title} problem.",
                 "hints": [
-                    "Hint 1: Review the definition of the concept",
-                    "Hint 2: Think about how this relates to previous topics"
+                    "Hint 1: Write down the definition or rule before solving",
+                    "Hint 2: Point to the exact clue that tells you which method to use"
                 ],
                 "time_estimate": "5-10 minutes"
             })
@@ -117,12 +133,14 @@ class TeachingAgent:
 
     def _suggest_next_topics(self, current_topic: str, roadmap: Dict[str, Any] = None) -> List[str]:
         """Suggest related topics based on roadmap or learning progression"""
-        # In production, use roadmap to suggest next topics
-        return [
-            f"Advanced concepts in {current_topic}",
-            "Related area 1",
-            "Related area 2"
-        ]
+        topics = roadmap_topics(roadmap)
+        current_key = current_topic.strip().lower()
+        if topics:
+            for index, topic in enumerate(topics):
+                if topic.lower() == current_key:
+                    return topics[index + 1:index + 4] or [f"Advanced {topic_title(current_topic)}"]
+            return topics[:3]
+        return [f"Advanced {topic_title(current_topic)}", f"Practice problems for {topic_title(current_topic)}", "Mixed revision"]
 
     async def adapt_explanation(self, student_id: str, performance_metrics: Dict[str, Any]) -> str:
         """Adapt difficulty based on student performance"""

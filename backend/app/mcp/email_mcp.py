@@ -2,7 +2,6 @@ import os
 import smtplib
 from typing import Optional, Dict, Any
 from email.message import EmailMessage
-import requests
 
 
 class EmailMCP:
@@ -51,6 +50,8 @@ class EmailMCP:
         return {"ok": True}
 
     def _send_sendgrid(self, from_email: str, to: str, subject: str, body: str, html: Optional[str] = None):
+        import requests
+
         if not getattr(self, "api_key", None):
             raise RuntimeError("SENDGRID_API_KEY not configured")
         url = "https://api.sendgrid.com/v3/mail/send"
