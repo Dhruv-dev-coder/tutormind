@@ -54,11 +54,12 @@ async def verify_token(payload: TokenVerifyRequest):
         student_id = str(existing.get('_id'))
         is_first_time = not existing.get("onboarded", False)
 
-    response = TokenVerifyResponse(uid=uid, email=email, name=name, firebase_claims=decoded)
-    
-    # Add custom fields for frontend routing
-    response.is_first_time = is_first_time
-    response.student_id = student_id
-    response.onboarded = existing.get("onboarded", False) if existing else False
-    
-    return response
+    return TokenVerifyResponse(
+    uid=uid,
+    email=email,
+    name=name,
+    firebase_claims=decoded,
+    is_first_time=is_first_time,
+    student_id=student_id,
+    onboarded=(existing.get("onboarded", False) if existing else False)
+)

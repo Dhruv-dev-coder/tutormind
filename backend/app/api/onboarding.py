@@ -3,9 +3,21 @@ from typing import Dict, Any
 from app.database import db
 from app.agents.langgraph_workflow import LangGraphWorkflow
 from datetime import datetime
+from bson import ObjectId
+from bson.errors import InvalidId
 
 router = APIRouter()
 workflow = LangGraphWorkflow()
+
+
+def student_selector(student_id: str) -> Dict[str, Any]:
+    """Build a Mongo selector for backend student ids or Firebase uids."""
+    if student_id.startswith('_'):
+        return {"firebase_uid": student_id}
+    try:
+        return {"_id": ObjectId(student_id)}
+    except (InvalidId, TypeError):
+        return {"firebase_uid": student_id}
 
 
 @router.post('/initialize')
@@ -31,7 +43,7 @@ async def initialize_student(payload: Dict[str, Any] = Body(...)):
     # Store roadmap in database
     students = db['students']
     await students.update_one(
-        {"_id": student_id} if not student_id.startswith('_') else {"firebase_uid": student_id},
+        student_selector(student_id),
         {
             "$set": {
                 "roadmap": roadmap,
@@ -56,7 +68,7 @@ async def onboarding_status(student_id: str):
     """Check onboarding status of a student"""
     students = db['students']
     student = await students.find_one(
-        {"_id": student_id} if not student_id.startswith('_') else {"firebase_uid": student_id}
+        student_selector(student_id)
     )
     
     if not student:
@@ -80,7 +92,7 @@ async def get_student_roadmap(student_id: str):
     """Retrieve student's personalized roadmap"""
     students = db['students']
     student = await students.find_one(
-        {"_id": student_id} if not student_id.startswith('_') else {"firebase_uid": student_id}
+        student_selector(student_id)
     )
     
     if not student or "roadmap" not in student:

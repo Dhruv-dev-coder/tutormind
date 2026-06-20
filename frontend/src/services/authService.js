@@ -23,22 +23,18 @@ const provider = new GoogleAuthProvider()
 const authService = {
   signInWithEmail: async (email, password) => {
     ensureFirebase()
-    const cred = await signInWithEmailAndPassword(auth, email, password)
-    // verify with backend and attach auth header
-    try{ return await authService.verifyWithBackend() }catch(e){}
-    return cred
+    await signInWithEmailAndPassword(auth, email, password)
+    return await authService.verifyWithBackend()
   },
   signUpWithEmail: async (email, password, profile = {}) => {
     ensureFirebase()
-    const userCred = await createUserWithEmailAndPassword(auth, email, password)
-    try{ return await authService.verifyWithBackend() }catch(e){}
-    return userCred
+    await createUserWithEmailAndPassword(auth, email, password)
+    return await authService.verifyWithBackend()
   },
   signInWithGoogle: async () => {
     ensureFirebase()
-    const cred = await signInWithPopup(auth, provider)
-    try{ return await authService.verifyWithBackend() }catch(e){}
-    return cred
+    await signInWithPopup(auth, provider)
+    return await authService.verifyWithBackend()
   },
   signOut: async () => {
     ensureFirebase()
@@ -54,19 +50,17 @@ const authService = {
   },
   verifyWithBackend: async () => {
     ensureFirebase()
-    if(!auth || !auth.currentUser) return null
+    if(!auth || !auth.currentUser) {
+      throw new Error('No authenticated Firebase user')
+    }
     const idToken = await auth.currentUser.getIdToken()
     // send to backend verify endpoint
-    try{
-      const resp = await api.post('/api/auth/verify', { id_token: idToken })
-      // attach token for subsequent API calls
-      setAuthToken(idToken)
-      // store user info including onboarding status
-      sessionStorage.setItem('tutormind_user', JSON.stringify(resp.data))
-      return resp.data
-    }catch(err){
-      return null
-    }
+    const resp = await api.post('/api/auth/verify', { id_token: idToken })
+    // attach token for subsequent API calls
+    setAuthToken(idToken)
+    // store user info including onboarding status
+    sessionStorage.setItem('tutormind_user', JSON.stringify(resp.data))
+    return resp.data
   }
 }
 

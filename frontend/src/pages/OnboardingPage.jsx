@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/apiService'
+import authService from '../services/authService'
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1) // 1: instructions, 2: syllabus, 3: datesheet, 4: generating
@@ -8,10 +9,35 @@ export default function OnboardingPage() {
   const [datesheetText, setDatesheetText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [userInfo, setUserInfo] = useState(() => {
+    return JSON.parse(sessionStorage.getItem('tutormind_user') || '{}')
+  })
   const navigate = useNavigate()
 
-  const userInfo = JSON.parse(sessionStorage.getItem('tutormind_user') || '{}')
   const studentId = userInfo.student_id
+
+  useEffect(() => {
+    if (studentId) return
+
+    let cancelled = false
+    async function hydrateUser() {
+      try {
+        const verifiedUser = await authService.verifyWithBackend()
+        if (!cancelled && verifiedUser) {
+          setUserInfo(verifiedUser)
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError('Please sign in again before starting onboarding.')
+        }
+      }
+    }
+
+    hydrateUser()
+    return () => {
+      cancelled = true
+    }
+  }, [studentId])
 
   const handleNext = () => {
     if (step < 3) {
@@ -22,6 +48,13 @@ export default function OnboardingPage() {
   }
 
   const submitOnboarding = async () => {
+    console.log('ONBOARDING USER:', userInfo)
+
+    if (!studentId) {
+      setError('Student profile is still loading. Please wait a moment and try again.')
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
@@ -143,10 +176,10 @@ export default function OnboardingPage() {
               </button>
               <button 
                 onClick={handleNext}
-                disabled={loading || !datesheetText.trim()}
+                disabled={loading || !studentId || !datesheetText.trim()}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition"
               >
-                {loading ? 'Generating...' : 'Generate Roadmap →'}
+                {loading ? 'Generating...' : studentId ? 'Generate Roadmap →' : 'Loading Profile...'}
               </button>
             </div>
           </div>
