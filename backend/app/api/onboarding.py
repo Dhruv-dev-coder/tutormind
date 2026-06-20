@@ -3,21 +3,10 @@ from typing import Dict, Any
 from app.database import db
 from app.agents.langgraph_workflow import LangGraphWorkflow
 from datetime import datetime
-from bson import ObjectId
-from bson.errors import InvalidId
+from app.api.utils import student_selector
 
 router = APIRouter()
 workflow = LangGraphWorkflow()
-
-
-def student_selector(student_id: str) -> Dict[str, Any]:
-    """Build a Mongo selector for backend student ids or Firebase uids."""
-    if student_id.startswith('_'):
-        return {"firebase_uid": student_id}
-    try:
-        return {"_id": ObjectId(student_id)}
-    except (InvalidId, TypeError):
-        return {"firebase_uid": student_id}
 
 
 @router.post('/initialize')
