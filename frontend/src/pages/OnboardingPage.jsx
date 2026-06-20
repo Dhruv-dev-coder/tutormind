@@ -8,19 +8,19 @@ export default function OnboardingPage() {
   const [syllabusText, setSyllabusText] = useState('')
   const [datesheetText, setDatesheetText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(true)
   const [error, setError] = useState(null)
   const [userInfo, setUserInfo] = useState(() => {
     return JSON.parse(sessionStorage.getItem('tutormind_user') || '{}')
   })
   const navigate = useNavigate()
 
-  const studentId = userInfo.student_id
+  const studentId = profileLoading ? null : userInfo.student_id
 
   useEffect(() => {
-    if (studentId) return
-
     let cancelled = false
-    async function hydrateUser() {
+
+    async function refreshUserProfile() {
       try {
         const verifiedUser = await authService.verifyWithBackend()
         if (!cancelled && verifiedUser) {
@@ -28,16 +28,21 @@ export default function OnboardingPage() {
         }
       } catch (e) {
         if (!cancelled) {
+          setUserInfo({})
           setError('Please sign in again before starting onboarding.')
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false)
         }
       }
     }
 
-    hydrateUser()
+    refreshUserProfile()
     return () => {
       cancelled = true
     }
-  }, [studentId])
+  }, [])
 
   const handleNext = () => {
     if (step < 3) {
@@ -50,7 +55,7 @@ export default function OnboardingPage() {
   const submitOnboarding = async () => {
     console.log('ONBOARDING USER:', userInfo)
 
-    if (!studentId) {
+    if (profileLoading || !studentId) {
       setError('Student profile is still loading. Please wait a moment and try again.')
       return
     }
@@ -176,7 +181,7 @@ export default function OnboardingPage() {
               </button>
               <button 
                 onClick={handleNext}
-                disabled={loading || !studentId || !datesheetText.trim()}
+                disabled={loading || profileLoading || !studentId || !datesheetText.trim()}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition"
               >
                 {loading ? 'Generating...' : studentId ? 'Generate Roadmap →' : 'Loading Profile...'}
