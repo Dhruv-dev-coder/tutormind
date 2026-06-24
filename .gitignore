@@ -11,4 +11,3 @@ __pycache__/
 .vscode/
 frontend/dist/
 backend/.venv/
-backend/firebase-admin.json
