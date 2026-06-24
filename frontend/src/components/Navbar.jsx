@@ -17,10 +17,11 @@ export default function Navbar(){
           <Link to="/" className="text-xl font-bold">TutorMind</Link>
         </div>
         <div className="space-x-4">
-          <Link to="/planner" className="text-sm text-gray-700">Planner</Link>
-          <Link to="/classroom" className="text-sm text-gray-700">AI Classroom</Link>
-          <Link to="/quizzes" className="text-sm text-gray-700">Quizzes</Link>
           <Link to="/dashboard" className="text-sm text-gray-700">Dashboard</Link>
+          <Link to="/planner" className="text-sm text-gray-700">Planner</Link>
+          <Link to="/ai-classroom" className="text-sm text-gray-700">AI Classroom</Link>
+          <Link to="/quiz" className="text-sm text-gray-700">Quizzes</Link>
+          <Link to="/notes/review" className="text-sm text-gray-700">Notes</Link>
           <button onClick={handleLogout} className="text-sm text-red-500">Logout</button>
         </div>
       </div>

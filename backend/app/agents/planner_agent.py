@@ -159,20 +159,43 @@ class PlannerAgent:
         
         return weekly
 
+    def _derive_topic(self, chapter: Dict[str, Any]) -> str:
+        """Derive a teachable topic from chapter metadata."""
+        topics = chapter.get("topics") or []
+        if topics:
+            return topics[0]
+        return chapter.get("name", "General Review")
+
     def _generate_daily_plan(self, chapters: List[Dict[str, Any]], num_days: int) -> List[Dict[str, Any]]:
-        """Create daily breakdown"""
+        """Create daily breakdown with structured session metadata for interactivity."""
         daily = []
         for d in range(num_days):
             chapter = chapters[d % len(chapters)] if chapters else {"name": "Study"}
+            topic = self._derive_topic(chapter)
             daily.append({
                 "day": d + 1,
                 "date": (datetime.now() + timedelta(days=d)).strftime("%Y-%m-%d"),
                 "focus": chapter.get("name", "General Review"),
-                "morning_session": {"duration": "45 min", "activity": "New concept learning"},
-                "afternoon_session": {"duration": "1 hour", "activity": "Practice problems"},
-                "evening_session": {"duration": "30 min", "activity": "Review and notes"},
+                "morning_session": {
+                    "duration": "45 min",
+                    "activity": "New concept learning",
+                    "type": "concept_learning",
+                    "topic": topic,
+                },
+                "afternoon_session": {
+                    "duration": "1 hour",
+                    "activity": "Practice problems",
+                    "type": "practice",
+                    "topic": topic,
+                },
+                "evening_session": {
+                    "duration": "30 min",
+                    "activity": "Review and notes",
+                    "type": "revision",
+                    "topic": topic,
+                },
                 "revision_target": "Previous day concepts",
-                "progress_check": "Solve 5-10 practice problems"
+                "progress_check": "Solve 5-10 practice problems",
             })
-        
+
         return daily

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import aiService from '../services/aiService'
+import { loadRoadmap } from '../services/roadmapService'
+import LearningSessionBlock from '../components/LearningSessionBlock'
 
 export default function StudyPlanner(){
   const [roadmap, setRoadmap] = useState(null)
@@ -8,11 +10,7 @@ export default function StudyPlanner(){
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Retrieve roadmap from session storage
-    const stored = sessionStorage.getItem('tutormind_roadmap')
-    if (stored) {
-      setRoadmap(JSON.parse(stored))
-    }
+    loadRoadmap().then(setRoadmap)
   }, [])
 
   const regenerate = async () => {
@@ -139,20 +137,14 @@ export default function StudyPlanner(){
             <div className="space-y-4">
               {roadmap.daily_plan?.map((day, i) => (
                 <div key={i} className="bg-gray-800 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-2">Day {day.day} - {day.date}</h3>
+                  <h3 className="text-lg font-semibold text-white mb-1">
+                    Day {day.day} - {day.date}
+                  </h3>
+                  <p className="text-indigo-300 text-sm mb-4">Focus: {day.focus}</p>
                   <div className="space-y-3">
-                    <div className="bg-gray-700 rounded p-3">
-                      <p className="text-gray-400 text-sm">Morning</p>
-                      <p className="text-white">{day.morning_session?.activity} ({day.morning_session?.duration})</p>
-                    </div>
-                    <div className="bg-gray-700 rounded p-3">
-                      <p className="text-gray-400 text-sm">Afternoon</p>
-                      <p className="text-white">{day.afternoon_session?.activity} ({day.afternoon_session?.duration})</p>
-                    </div>
-                    <div className="bg-gray-700 rounded p-3">
-                      <p className="text-gray-400 text-sm">Evening</p>
-                      <p className="text-white">{day.evening_session?.activity} ({day.evening_session?.duration})</p>
-                    </div>
+                    <LearningSessionBlock label="Morning" session={day.morning_session} dayPlan={day} />
+                    <LearningSessionBlock label="Afternoon" session={day.afternoon_session} dayPlan={day} />
+                    <LearningSessionBlock label="Evening" session={day.evening_session} dayPlan={day} />
                   </div>
                 </div>
               ))}

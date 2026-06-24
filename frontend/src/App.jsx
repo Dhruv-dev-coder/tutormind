@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import StudyPlanner from './pages/StudyPlanner'
 import AIClassroom from './pages/AIClassroom'
 import QuizCenter from './pages/QuizCenter'
+import NotesReview from './pages/NotesReview'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 
@@ -25,7 +26,10 @@ export default function App(){
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/planner" element={<ProtectedRoute><StudyPlanner /></ProtectedRoute>} />
             <Route path="/classroom" element={<ProtectedRoute><AIClassroom /></ProtectedRoute>} />
+            <Route path="/ai-classroom" element={<ProtectedRoute><AIClassroom /></ProtectedRoute>} />
             <Route path="/quizzes" element={<ProtectedRoute><QuizCenter /></ProtectedRoute>} />
+            <Route path="/quiz" element={<ProtectedRoute><QuizCenter /></ProtectedRoute>} />
+            <Route path="/notes/review" element={<ProtectedRoute><NotesReview /></ProtectedRoute>} />
           </Routes>
         </div>
       </div>
