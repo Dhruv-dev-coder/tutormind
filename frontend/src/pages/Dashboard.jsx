@@ -145,7 +145,13 @@ export default function Dashboard() {
         </div>
         <div className="mt-4 p-3 bg-gray-800 rounded text-gray-100 min-h-20">
           {result ? (
-            <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(result, null, 2)}</pre>
+            result.error ? (
+              <p className="text-red-300 text-sm">{result.error}</p>
+            ) : result.answer ? (
+              <p className="whitespace-pre-wrap text-sm">{result.answer}</p>
+            ) : (
+              <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(result, null, 2)}</pre>
+            )
           ) : (
             <span className="text-gray-400">Ask a question to get insights...</span>
           )}

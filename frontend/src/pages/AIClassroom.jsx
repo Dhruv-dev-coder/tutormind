@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import aiService from '../services/aiService'
 import { getStudentId } from '../utils/userUtils'
 import LessonDisplay from '../components/LessonDisplay'
@@ -31,6 +31,7 @@ export default function AIClassroom() {
         prompt: resp.prompt,
         lesson: resp.lesson,
         notes: resp.notes,
+        llmError: resp.lesson?.llm_error,
       })
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || 'Failed to start session')
@@ -88,6 +89,12 @@ export default function AIClassroom() {
           </div>
         )}
 
+        {session?.llmError && session.lesson?.source === 'template' && (
+          <div className="mt-4 p-3 bg-yellow-900/40 border border-yellow-700 rounded text-yellow-200 text-sm">
+            AI generation unavailable — showing basic content. Check your Gemini API key and quota, then restart the backend.
+          </div>
+        )}
+
         {loading && !session && (
           <div className="mt-8 text-center text-gray-400">
             <p className="text-lg">Preparing your lesson on &ldquo;{topic}&rdquo;...</p>
@@ -97,6 +104,15 @@ export default function AIClassroom() {
 
         {session && (
           <div className="mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-green-400 text-sm">Session complete — notes saved automatically.</p>
+              <Link
+                to={`/notes/review?topic=${encodeURIComponent(topic)}`}
+                className="px-3 py-1 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded"
+              >
+                View Notes →
+              </Link>
+            </div>
             <LessonDisplay lesson={session.lesson} notes={session.notes} prompt={session.prompt} />
           </div>
         )}

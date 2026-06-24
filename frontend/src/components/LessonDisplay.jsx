@@ -4,7 +4,13 @@ export default function LessonDisplay({ lesson, notes, prompt }) {
   if (!lesson) return null
 
   const explanation = lesson.explanation || {}
-  const resources = lesson.resources || []
+  const rawResources = lesson.resources || {}
+  const resourceLinks = Array.isArray(rawResources)
+    ? rawResources
+    : [
+        ...(rawResources.video_details || []),
+        ...(rawResources.academic || []).map((r) => ({ title: r.title, url: r.url, type: 'article' })),
+      ].filter((r) => r?.url)
 
   return (
     <div className="space-y-6">
@@ -19,6 +25,7 @@ export default function LessonDisplay({ lesson, notes, prompt }) {
         <h3 className="text-xl font-semibold text-white">{lesson.topic}</h3>
         <p className="text-gray-400 text-sm mt-1">
           Level: {lesson.level} · {lesson.estimated_learning_time}
+          {lesson.source && <span className="ml-2 text-indigo-400">({lesson.source})</span>}
         </p>
       </div>
 
@@ -80,15 +87,29 @@ export default function LessonDisplay({ lesson, notes, prompt }) {
               {ex.solution_steps?.map((step, j) => (
                 <p key={j} className="text-gray-300 text-sm mt-1">{step}</p>
               ))}
+              {ex.answer && <p className="text-green-300 text-sm mt-2">Answer: {ex.answer}</p>}
             </div>
           ))}
         </Section>
       )}
 
-      {resources.length > 0 && (
+      {lesson.exercises?.length > 0 && (
+        <Section title="Practice Exercises">
+          {lesson.exercises.map((ex, i) => (
+            <div key={i} className="bg-gray-700/50 rounded p-4 mb-3">
+              <p className="text-white font-medium">{ex.problem}</p>
+              {ex.hints?.map((hint, j) => (
+                <p key={j} className="text-gray-400 text-sm mt-1">Hint: {hint}</p>
+              ))}
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {resourceLinks.length > 0 && (
         <Section title="References & Videos">
           <ul className="space-y-2">
-            {resources.map((res, i) => (
+            {resourceLinks.map((res, i) => (
               <li key={i}>
                 <a
                   href={res.url}

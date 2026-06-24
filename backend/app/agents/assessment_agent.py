@@ -5,12 +5,16 @@ Provides detailed feedback and evaluates understanding.
 """
 from typing import Dict, Any, List
 from datetime import datetime
+import logging
 from app.agents.learning_intelligence import (
     mastery_band,
     normalize_difficulty,
     roadmap_topics,
     topic_title,
 )
+from app.services import llm_service
+
+logger = logging.getLogger(__name__)
 
 
 class AssessmentAgent:
@@ -21,8 +25,23 @@ class AssessmentAgent:
         """Generate a comprehensive quiz based on subject and difficulty"""
         difficulty = normalize_difficulty(difficulty)
         focus_topics = roadmap_topics(roadmap)[:5] or [subject_id]
-        questions = self._generate_questions(subject_id, difficulty, count=10, topics=focus_topics)
-        
+
+        questions = None
+        llm_error = None
+        source = "template"
+        if llm_service.is_configured():
+            try:
+                questions = await self._llm_generate_questions(subject_id, difficulty, focus_topics)
+                if questions:
+                    source = "gemini"
+            except Exception as exc:
+                llm_error = str(exc)
+                logger.warning("LLM quiz generation failed for %s: %s", subject_id, exc)
+                questions = None
+
+        if not questions:
+            questions = self._generate_questions(subject_id, difficulty, count=10, topics=focus_topics)
+
         return {
             "quiz_id": f"quiz_{datetime.utcnow().timestamp()}",
             "student_id": student_id,
@@ -37,6 +56,8 @@ class AssessmentAgent:
             "time_limit_minutes": 30,
             "passing_score": 60,
             "questions": questions,
+            "source": source,
+            "llm_error": llm_error,
             "instructions": [
                 "Read each question carefully",
                 "Attempt all questions",
@@ -44,6 +65,60 @@ class AssessmentAgent:
                 "Do not navigate away during the quiz"
             ]
         }
+
+    async def _llm_generate_questions(self, subject: str, difficulty: str, topics: List[str]) -> List[Dict[str, Any]]:
+        topics_str = ", ".join(topics)
+        prompt = f"""Generate a 10-question quiz on "{subject}" at {difficulty} difficulty.
+Related topics: {topics_str}
+
+Return JSON:
+{{
+  "questions": [
+    {{
+      "id": "q_1",
+      "type": "multiple_choice",
+      "topic": "topic name",
+      "question": "question text",
+      "marks": 10,
+      "options": ["A", "B", "C", "D"],
+      "correct_answer": 1,
+      "explanation": "why correct"
+    }}
+  ]
+}}
+
+Include exactly 10 questions with a mix of multiple_choice, true_false, and short_answer.
+Each question must be specific to "{subject}" — no generic placeholders.
+For multiple_choice: 4 options, correct_answer is the 0-based index of the correct option.
+For true_false: correct_answer is true or false (boolean).
+For short_answer: include expected_keywords (array) and sample_answer (string)."""
+
+        data = await llm_service.generate_json(prompt)
+        questions = [self._normalize_question(q, i, difficulty) for i, q in enumerate(data.get("questions", []))]
+        questions = [q for q in questions if q.get("question")]
+        if len(questions) < 5:
+            raise RuntimeError(f"LLM returned only {len(questions)} valid questions")
+        return questions[:10]
+
+    def _normalize_question(self, q: Dict[str, Any], index: int, difficulty: str) -> Dict[str, Any]:
+        q_type = q.get("type", "multiple_choice")
+        normalized = {
+            "id": q.get("id") or f"q_{index + 1}",
+            "type": q_type,
+            "topic": q.get("topic", "General"),
+            "question": q.get("question") or q.get("prompt", ""),
+            "marks": q.get("marks") or {"easy": 5, "medium": 10, "hard": 15}.get(difficulty, 10),
+            "explanation": q.get("explanation", ""),
+        }
+        if q_type == "multiple_choice":
+            normalized["options"] = q.get("options") or []
+            normalized["correct_answer"] = q.get("correct_answer", 0)
+        elif q_type == "true_false":
+            normalized["correct_answer"] = bool(q.get("correct_answer", True))
+        elif q_type in ("short_answer", "essay"):
+            normalized["expected_keywords"] = q.get("expected_keywords") or ["definition", "method", "example"]
+            normalized["sample_answer"] = q.get("sample_answer") or q.get("answer", "")
+        return normalized
 
     def _generate_questions(self, subject: str, difficulty: str, count: int = 10, topics: List[str] = None) -> List[Dict[str, Any]]:
         """Generate quiz questions with answers"""
