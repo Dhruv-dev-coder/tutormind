@@ -6,7 +6,8 @@ import authService from '../services/authService'
 export default function OnboardingPage() {
   const [step, setStep] = useState(1) // 1: instructions, 2: syllabus, 3: datesheet, 4: generating
   const [syllabusText, setSyllabusText] = useState('')
-  const [datesheetText, setDatesheetText] = useState('')
+  const [subjects, setSubjects] = useState([])
+  const [examDates, setExamDates] = useState({}) // format: { "Subject": "YYYY-MM-DD" }
   const [loading, setLoading] = useState(false)
   const [profileLoading, setProfileLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -44,9 +45,29 @@ export default function OnboardingPage() {
     }
   }, [])
 
-  const handleNext = () => {
-    if (step < 3) {
-      setStep(step + 1)
+  const handleNext = async () => {
+    if (step === 1) {
+      setStep(2)
+    } else if (step === 2) {
+      setLoading(true)
+      setError(null)
+      try {
+        const resp = await api.post('/api/onboarding/parse_syllabus', {
+          syllabus_text: syllabusText
+        })
+        setSubjects(resp.data.subjects || [])
+        // Initialize date selections
+        const initialDates = {}
+        ;(resp.data.subjects || []).forEach(subj => {
+          initialDates[subj] = ''
+        })
+        setExamDates(initialDates)
+        setStep(3)
+      } catch (e) {
+        setError(e?.response?.data?.detail || e?.message || 'Failed to parse syllabus')
+      } finally {
+        setLoading(false)
+      }
     } else {
       submitOnboarding()
     }
@@ -60,17 +81,27 @@ export default function OnboardingPage() {
       return
     }
 
+    // Format the exam dates into structured datesheet text format
+    const constructedDatesheet = Object.entries(examDates)
+      .map(([subj, date]) => `${subj} - ${date || new Date().toISOString().slice(0, 10)}`)
+      .join('\n')
+
     setLoading(true)
     setError(null)
     try {
       const resp = await api.post('/api/onboarding/initialize', {
         student_id: studentId,
         syllabus_text: syllabusText,
-        datesheet_text: datesheetText
+        datesheet_text: constructedDatesheet
       })
       
       // Store roadmap in session
       sessionStorage.setItem('tutormind_roadmap', JSON.stringify(resp.data.roadmap))
+      
+      // Update onboarding status in session storage to prevent ProtectedRoute from redirecting back
+      const user = JSON.parse(sessionStorage.getItem('tutormind_user') || '{}')
+      user.onboarded = true
+      sessionStorage.setItem('tutormind_user', JSON.stringify(user))
       
       // Navigate to dashboard
       navigate('/dashboard')
@@ -165,13 +196,25 @@ export default function OnboardingPage() {
         {step === 3 && (
           <div className="bg-gray-800/50 rounded-lg p-8">
             <h2 className="text-2xl font-semibold mb-4">Step 3: Your Exam Schedule</h2>
-            <p className="text-gray-300 mb-4">Paste your exam dates, subjects, and deadlines:</p>
-            <textarea 
-              value={datesheetText}
-              onChange={e => setDatesheetText(e.target.value)}
-              placeholder="Math - June 15, 2024&#10;Science - June 22, 2024&#10;English - June 29, 2024"
-              className="w-full h-64 p-4 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500"
-            />
+            <p className="text-gray-300 mb-6">Assign exam dates for the subjects extracted from your syllabus:</p>
+            
+            <div className="space-y-4 max-h-80 overflow-y-auto mb-8 pr-2">
+              {subjects.map((subj, idx) => (
+                <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-gray-700/30 rounded-lg border border-gray-700">
+                  <span className="font-semibold text-white truncate max-w-xs">{subj}</span>
+                  <input
+                    type="date"
+                    value={examDates[subj] || ''}
+                    onChange={(e) => setExamDates({ ...examDates, [subj]: e.target.value })}
+                    className="p-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-indigo-500 transition"
+                  />
+                </div>
+              ))}
+              {subjects.length === 0 && (
+                <p className="text-gray-400 italic">No subjects found in syllabus. Proceed to generate roadmap.</p>
+              )}
+            </div>
+            
             <div className="flex gap-3 mt-6">
               <button 
                 onClick={() => setStep(2)}
@@ -181,7 +224,7 @@ export default function OnboardingPage() {
               </button>
               <button 
                 onClick={handleNext}
-                disabled={loading || profileLoading || !studentId || !datesheetText.trim()}
+                disabled={loading || profileLoading || !studentId}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition"
               >
                 {loading ? 'Generating...' : studentId ? 'Generate Roadmap →' : 'Loading Profile...'}

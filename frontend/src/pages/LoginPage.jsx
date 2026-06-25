@@ -35,14 +35,32 @@ export default function LoginPage(){
   }
 
   return (
-    <div className="max-w-md mx-auto mt-12">
-      <h2 className="text-2xl font-semibold">Sign in</h2>
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" className="w-full p-2 border rounded" />
-        <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" className="w-full p-2 border rounded" />
-        <div className="flex items-center justify-between">
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Sign in</button>
-          <button type="button" onClick={handleGoogle} className="px-4 py-2 border rounded">Google</button>
+    <div className="max-w-md mx-auto mt-16 p-8 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl">
+      <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-6">Sign In</h2>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
+          <input 
+            type="email"
+            value={email} 
+            onChange={e=>setEmail(e.target.value)} 
+            placeholder="email@example.com" 
+            className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" 
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Password</label>
+          <input 
+            type="password" 
+            value={password} 
+            onChange={e=>setPassword(e.target.value)} 
+            placeholder="••••••••" 
+            className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" 
+          />
+        </div>
+        <div className="flex items-center justify-between pt-4 gap-4">
+          <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-indigo-500/20 transition">Sign In</button>
+          <button type="button" onClick={handleGoogle} className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-semibold rounded-lg transition">Google</button>
         </div>
       </form>
     </div>

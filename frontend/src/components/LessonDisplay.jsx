@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function LessonDisplay({ lesson, notes, prompt }) {
+export default function LessonDisplay({ lesson, notes, prompt, onSelectTopic }) {
   if (!lesson) return null
 
   const explanation = lesson.explanation || {}
@@ -16,7 +16,12 @@ export default function LessonDisplay({ lesson, notes, prompt }) {
       )}
 
       <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-xl font-semibold text-white">{lesson.topic}</h3>
+        {lesson.subject && (
+          <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider block mb-1">
+            {lesson.subject}
+          </span>
+        )}
+        <h3 className="text-2xl font-bold text-white">{lesson.topic}</h3>
         <p className="text-gray-400 text-sm mt-1">
           Level: {lesson.level} · {lesson.estimated_learning_time}
         </p>
@@ -122,6 +127,30 @@ export default function LessonDisplay({ lesson, notes, prompt }) {
           {notes.notes?.summary && (
             <p className="text-gray-300 text-sm mt-3 italic">{notes.notes.summary}</p>
           )}
+        </Section>
+      )}
+
+      {lesson.next_topics?.length > 0 && (
+        <Section title="Upcoming Topics in your Roadmap">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {lesson.next_topics.map((t, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  if (typeof onSelectTopic === 'function') {
+                    onSelectTopic(t)
+                  } else {
+                    window.location.href = `/ai-classroom?topic=${encodeURIComponent(t)}`
+                  }
+                }}
+                className="p-3 bg-gray-700/40 hover:bg-gray-700 border border-gray-600 hover:border-indigo-500 rounded-lg text-left transition group"
+              >
+                <p className="text-white text-sm font-medium truncate">{t}</p>
+                <span className="text-indigo-400 text-xs mt-1 block group-hover:underline">Start Lesson →</span>
+              </button>
+            ))}
+          </div>
         </Section>
       )}
     </div>

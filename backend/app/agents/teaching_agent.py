@@ -23,9 +23,24 @@ class TeachingAgent:
         self.youtube = youtube_mcp or get_youtube_mcp()
         self.llm = llm_service
 
+    def _find_subject_for_topic(self, topic: str, roadmap: Dict[str, Any] = None) -> str:
+        if not roadmap or "chapters" not in roadmap:
+            return "General Study"
+        
+        topic_lower = topic.strip().lower()
+        for ch in roadmap.get("chapters", []):
+            if ch.get("name", "").strip().lower() == topic_lower:
+                return ch.get("subject", "General Study")
+            for t in ch.get("topics", []):
+                if t.strip().lower() == topic_lower:
+                    return ch.get("subject", "General Study")
+                    
+        return "General Study"
+
     async def teach_concept(self, student_id: str, topic: str, level: str = 'beginner', roadmap: Dict[str, Any] = None) -> Dict[str, Any]:
         """Teach a concept with comprehensive explanations and examples"""
         level = normalize_level(level)
+        subject = self._find_subject_for_topic(topic, roadmap)
         
         # Try to use LLM if available
         if self.llm.is_available():
@@ -47,6 +62,7 @@ class TeachingAgent:
         return {
             "student_id": student_id,
             "topic": topic,
+            "subject": subject,
             "level": level,
             "timestamp": datetime.utcnow().isoformat(),
             "explanation": explanation,

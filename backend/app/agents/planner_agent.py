@@ -9,6 +9,8 @@ from app.mcp import get_document_mcp, get_calendar_mcp
 from app.services.llm_service import llm_service
 
 
+import re
+
 class PlannerAgent:
     def __init__(self, document_mcp=None, calendar_mcp=None):
         self.document_mcp = document_mcp or get_document_mcp()
@@ -36,18 +38,67 @@ class PlannerAgent:
         return dates
 
     def _parse_chapters(self, syllabus_text: str) -> List[Dict[str, Any]]:
-        """Parse syllabus text into chapter structure"""
-        # Simple chapter extraction - in production use NLP/LLM
+        """Parse syllabus text into chapter structure with actual subjects/topics"""
         chapters = []
-        lines = syllabus_text.split('\n')
-        for i, line in enumerate(lines[:20]):  # Limit processing
-            if line.strip():
+        current_subject = "General Study"
+        
+        lines = [line.strip() for line in syllabus_text.split('\n') if line.strip()]
+        
+        # Check if there are subject-like headers
+        for line in lines:
+            # Check if this line defines a subject and its topics: e.g. "Math: Algebra, Calculus"
+            if ':' in line:
+                parts = line.split(':', 1)
+                subj = parts[0].strip()
+                topics_text = parts[1].strip()
+                topics = [t.strip() for t in re.split(r'[,;]', topics_text) if t.strip()]
+                if not topics:
+                    topics = [subj]
+                
                 chapters.append({
-                    "name": line.strip()[:100],
-                    "topics": [f"Topic {j+1}" for j in range(3)],
-                    "estimated_hours": 5 + (i % 10),
-                    "difficulty": ["beginner", "intermediate", "advanced"][i % 3]
+                    "subject": subj,
+                    "name": f"{subj} Fundamentals",
+                    "topics": topics,
+                    "estimated_hours": 8.0,
+                    "difficulty": "intermediate"
                 })
+                continue
+            
+            # If line is short and doesn't look like a typical chapter list line, it might be a subject header
+            if len(line) < 30 and not any(line.lower().startswith(x) for x in ['chapter', 'unit', 'topic', 'lesson', '-', '*', '1', '2', '3', '4', '5', '6', '7', '8', '9']):
+                current_subject = line
+                continue
+                
+            # Otherwise, treat the line as a chapter name
+            # Split the line by common delimiters to find topics, or use the line itself as topic
+            topic_names = []
+            cleaned_line = re.sub(r'^(?:chapter|unit|topic|lesson|\d+|-|\*|\.)\s*[:.-]?\s*', '', line, flags=re.IGNORECASE).strip()
+            
+            if cleaned_line:
+                # If there are sub-topics separated by commas or semicolons
+                if ',' in cleaned_line or ';' in cleaned_line:
+                    topic_names = [t.strip() for t in re.split(r'[,;]', cleaned_line) if t.strip()]
+                else:
+                    topic_names = [cleaned_line]
+                    
+                chapters.append({
+                    "subject": current_subject,
+                    "name": cleaned_line[:100],
+                    "topics": topic_names[:5],
+                    "estimated_hours": 6.0,
+                    "difficulty": "beginner"
+                })
+        
+        # If no chapters were parsed, create a default one using the whole text
+        if not chapters:
+            chapters.append({
+                "subject": "General Study",
+                "name": "Introduction",
+                "topics": [syllabus_text[:100].strip() or "General Concepts"],
+                "estimated_hours": 10.0,
+                "difficulty": "beginner"
+            })
+            
         return chapters
 
     def _parse_datesheet_manual(self, datesheet_text: str) -> Dict[str, Any]:
@@ -83,6 +134,15 @@ class PlannerAgent:
                 weekly_plan = self._generate_weekly_plan(chapters[:5], 4)
                 daily_plan = self._generate_daily_plan(chapters[:3], 7)
                 
+                # Extract unique subjects
+                subjects = []
+                for ch in chapters:
+                    subj = ch.get("subject", "General Study")
+                    if subj not in subjects:
+                        subjects.append(subj)
+                if not subjects:
+                    subjects = ["General Study"]
+                
                 return {
                     "student_id": student_id,
                     "created_at": datetime.utcnow().isoformat(),
@@ -94,7 +154,8 @@ class PlannerAgent:
                     "monthly_plan": monthly_plan,
                     "weekly_plan": weekly_plan,
                     "daily_plan": daily_plan,
-                    "chapters": chapters
+                    "chapters": chapters,
+                    "subjects": subjects
                 }
             except Exception as e:
                 print(f"LLM roadmap generation failed, falling back to template: {e}")
@@ -124,6 +185,15 @@ class PlannerAgent:
         # Generate daily plan for next 7 days
         daily_plan = self._generate_daily_plan(chapters[:3], 7)
         
+        # Extract unique subjects from parsed chapters
+        subjects = []
+        for ch in chapters:
+            subj = ch.get("subject", "General Study")
+            if subj not in subjects:
+                subjects.append(subj)
+        if not subjects:
+            subjects = ["General Study"]
+        
         return {
             "student_id": student_id,
             "created_at": datetime.utcnow().isoformat(),
@@ -135,7 +205,8 @@ class PlannerAgent:
             "monthly_plan": monthly_plan,
             "weekly_plan": weekly_plan,
             "daily_plan": daily_plan,
-            "chapters": chapters
+            "chapters": chapters,
+            "subjects": subjects
         }
 
     def _generate_semester_plan(self, chapters: List[Dict[str, Any]], days_remaining: int) -> List[Dict[str, Any]]:

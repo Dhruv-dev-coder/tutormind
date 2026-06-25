@@ -48,6 +48,10 @@ const authService = {
       return null
     }
   },
+  onAuthStateChange: (callback) => {
+    ensureFirebase()
+    return auth.onAuthStateChanged(callback)
+  },
   verifyWithBackend: async () => {
     ensureFirebase()
     if(!auth || !auth.currentUser) {

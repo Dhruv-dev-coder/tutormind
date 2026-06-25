@@ -9,6 +9,30 @@ router = APIRouter()
 workflow = LangGraphWorkflow()
 
 
+@router.post('/parse_syllabus')
+async def parse_syllabus_endpoint(payload: Dict[str, Any] = Body(...)):
+    """Parse raw syllabus text and extract unique subjects."""
+    syllabus_text = payload.get('syllabus_text', '')
+    if not syllabus_text:
+        return {"status": "ok", "subjects": []}
+    
+    from app.agents.planner_agent import PlannerAgent
+    planner = PlannerAgent()
+    chapters = planner._parse_chapters(syllabus_text)
+    
+    # Extract unique subjects
+    subjects = []
+    for ch in chapters:
+        subj = ch.get("subject", "General Study")
+        if subj not in subjects:
+            subjects.append(subj)
+            
+    if not subjects:
+        subjects = ["General Study"]
+        
+    return {"status": "ok", "subjects": subjects}
+
+
 @router.post('/initialize')
 async def initialize_student(payload: Dict[str, Any] = Body(...)):
     """Initialize student with syllabus and datesheet to generate roadmap"""

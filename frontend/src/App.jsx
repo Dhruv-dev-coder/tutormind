@@ -15,9 +15,9 @@ import Navbar from './components/Navbar'
 export default function App(){
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gray-950 text-gray-100 font-sans flex flex-col">
         <Navbar />
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="max-w-6xl mx-auto p-6 flex-1 w-full">
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />

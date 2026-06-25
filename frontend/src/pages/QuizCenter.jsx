@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import aiService from '../services/aiService'
 import { getStudentId } from '../utils/userUtils'
+import { loadRoadmap } from '../services/roadmapService'
 import QuizTaker from '../components/QuizTaker'
 import QuizResults from '../components/QuizResults'
 
@@ -14,15 +15,22 @@ export default function QuizCenter() {
   const [quiz, setQuiz] = useState(null)
   const [evaluation, setEvaluation] = useState(null)
   const [error, setError] = useState(null)
+  const [roadmap, setRoadmap] = useState(null)
   const topicPrefilled = useRef(false)
 
   useEffect(() => {
-    const topicParam = searchParams.get('topic')
-    if (topicParam && !topicPrefilled.current) {
-      topicPrefilled.current = true
-      setSubject(topicParam)
-    }
-  }, [searchParams])
+    loadRoadmap().then((data) => {
+      setRoadmap(data)
+      const topicParam = searchParams.get('topic')
+      if (topicParam) {
+        topicPrefilled.current = true
+        setSubject(topicParam)
+      } else if (data && data.chapters && data.chapters.length > 0 && !subject) {
+        const defaultSubject = data.chapters[0].topics?.[0] || data.chapters[0].name
+        setSubject(defaultSubject)
+      }
+    })
+  }, [searchParams, subject])
 
   const generate = async () => {
     if (!subject.trim()) return
@@ -83,12 +91,21 @@ export default function QuizCenter() {
         <div className="mt-6 max-w-2xl">
           <label className="block text-sm text-gray-300">Subject or topic</label>
           <div className="flex mt-2 gap-2">
-            <input
+            <select
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g. Binary Trees"
-              className="flex-1 p-2 rounded border bg-gray-700 text-white border-gray-600"
-            />
+              className="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {roadmap && roadmap.chapters?.map((ch, idx) => (
+                <optgroup key={idx} label={ch.subject || 'General'}>
+                  <option value={ch.name}>{ch.name}</option>
+                  {ch.topics?.map((top, tIdx) => (
+                    <option key={`${idx}-${tIdx}`} value={top}>{top}</option>
+                  ))}
+                </optgroup>
+              ))}
+              {!roadmap && <option value="">Loading topics...</option>}
+            </select>
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
