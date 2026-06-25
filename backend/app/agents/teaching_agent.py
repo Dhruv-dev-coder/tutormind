@@ -6,6 +6,7 @@ Integrates RAG for grounded responses and MCP tools for external resources.
 from typing import Dict, Any, List
 from datetime import datetime
 from app.mcp import get_tavily_mcp, get_youtube_mcp
+from app.services.llm_service import llm_service
 from app.agents.learning_intelligence import (
     build_lesson_path,
     dedupe_keep_order,
@@ -20,12 +21,25 @@ class TeachingAgent:
     def __init__(self, tavily_mcp=None, youtube_mcp=None):
         self.tavily = tavily_mcp or get_tavily_mcp()
         self.youtube = youtube_mcp or get_youtube_mcp()
+        self.llm = llm_service
 
     async def teach_concept(self, student_id: str, topic: str, level: str = 'beginner', roadmap: Dict[str, Any] = None) -> Dict[str, Any]:
         """Teach a concept with comprehensive explanations and examples"""
         level = normalize_level(level)
-        explanation = self._generate_explanation(topic, level)
-        examples = await self.generate_examples(topic, count=3)
+        
+        # Try to use LLM if available
+        if self.llm.is_available():
+            try:
+                explanation = await self.llm.generate_explanation(topic, level)
+                examples = await self.llm.generate_examples(topic, count=3)
+            except Exception as e:
+                print(f"LLM teaching failed, falling back to template: {e}")
+                explanation = self._generate_explanation(topic, level)
+                examples = await self.generate_examples(topic, count=3)
+        else:
+            explanation = self._generate_explanation(topic, level)
+            examples = await self.generate_examples(topic, count=3)
+        
         resources = await self._find_resources(topic)
         exercises = self._generate_exercises(topic, level)
         lesson_path = build_lesson_path(topic, level)

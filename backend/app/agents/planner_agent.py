@@ -6,12 +6,14 @@ Uses AI to create semester, monthly, weekly, and daily plans with chapter breakd
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
 from app.mcp import get_document_mcp, get_calendar_mcp
+from app.services.llm_service import llm_service
 
 
 class PlannerAgent:
     def __init__(self, document_mcp=None, calendar_mcp=None):
         self.document_mcp = document_mcp or get_document_mcp()
         self.calendar_mcp = calendar_mcp or get_calendar_mcp()
+        self.llm = llm_service
 
     async def analyze_syllabus(self, document_bytes: bytes, content_type: str) -> Dict[str, Any]:
         """Extract chapters and topics from syllabus"""
@@ -67,6 +69,37 @@ class PlannerAgent:
 
     async def generate_roadmap(self, student_id: str, syllabus_text: str, datesheet_text: str) -> Dict[str, Any]:
         """Generate comprehensive study roadmap for semester, months, weeks, and days"""
+        # Try to use LLM if available
+        if self.llm.is_available():
+            try:
+                llm_roadmap = await self.llm.generate_roadmap(syllabus_text, datesheet_text)
+                # Enhance LLM output with structured plans
+                chapters = llm_roadmap.get("chapters", [])
+                days_remaining = llm_roadmap.get("days_remaining", 90)
+                
+                # Generate structured plans
+                semester_plan = self._generate_semester_plan(chapters, days_remaining)
+                monthly_plan = self._generate_monthly_plan(chapters, days_remaining)
+                weekly_plan = self._generate_weekly_plan(chapters[:5], 4)
+                daily_plan = self._generate_daily_plan(chapters[:3], 7)
+                
+                return {
+                    "student_id": student_id,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "exam_date": llm_roadmap.get("exam_date"),
+                    "days_remaining": days_remaining,
+                    "total_chapters": llm_roadmap.get("total_chapters", len(chapters)),
+                    "total_estimated_hours": llm_roadmap.get("total_estimated_hours", await self.estimate_study_hours(chapters)),
+                    "semester_plan": semester_plan,
+                    "monthly_plan": monthly_plan,
+                    "weekly_plan": weekly_plan,
+                    "daily_plan": daily_plan,
+                    "chapters": chapters
+                }
+            except Exception as e:
+                print(f"LLM roadmap generation failed, falling back to template: {e}")
+        
+        # Fallback to template-based generation
         # Parse syllabus and datesheet
         if isinstance(syllabus_text, bytes):
             syllabus_data = await self.analyze_syllabus(syllabus_text, 'text/plain')

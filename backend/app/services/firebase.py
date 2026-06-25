@@ -36,8 +36,20 @@ def verify_id_token(id_token: str) -> Optional[Dict[str, Any]]:
     Returns None if verification fails or Firebase is not initialized.
     """
     if not firebase_admin._apps:
-        initialize_firebase()
+        try:
+            initialize_firebase()
+        except Exception as e:
+            # Log the error for debugging
+            print(f"Firebase initialization failed: {e}")
+            return None
+    
     if not firebase_admin._apps:
+        print("Firebase not initialized - check FIREBASE_CREDENTIALS environment variable")
         return None
-    decoded = auth.verify_id_token(id_token)
-    return decoded
+    
+    try:
+        decoded = auth.verify_id_token(id_token)
+        return decoded
+    except Exception as e:
+        print(f"Token verification failed: {e}")
+        return None

@@ -54,13 +54,20 @@ const authService = {
       throw new Error('No authenticated Firebase user')
     }
     const idToken = await auth.currentUser.getIdToken()
+    console.log('Firebase token obtained, length:', idToken.length)
     // send to backend verify endpoint
-    const resp = await api.post('/api/auth/verify', { id_token: idToken })
-    // attach token for subsequent API calls
-    setAuthToken(idToken)
-    // store user info including onboarding status
-    sessionStorage.setItem('tutormind_user', JSON.stringify(resp.data))
-    return resp.data
+    try {
+      const resp = await api.post('/api/auth/verify', { id_token: idToken })
+      console.log('Backend verification successful:', resp.data)
+      // attach token for subsequent API calls
+      setAuthToken(idToken)
+      // store user info including onboarding status
+      sessionStorage.setItem('tutormind_user', JSON.stringify(resp.data))
+      return resp.data
+    } catch (error) {
+      console.error('Backend verification failed:', error.response?.data || error.message)
+      throw error
+    }
   }
 }
 

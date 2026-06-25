@@ -11,17 +11,29 @@ from app.agents.learning_intelligence import (
     roadmap_topics,
     topic_title,
 )
+from app.services.llm_service import llm_service
 
 
 class AssessmentAgent:
     def __init__(self):
         self.question_types = ["multiple_choice", "short_answer", "true_false", "essay"]
+        self.llm = llm_service
 
     async def generate_quiz(self, student_id: str, subject_id: str, difficulty: str = "medium", roadmap: Dict[str, Any] = None) -> Dict[str, Any]:
         """Generate a comprehensive quiz based on subject and difficulty"""
         difficulty = normalize_difficulty(difficulty)
         focus_topics = roadmap_topics(roadmap)[:5] or [subject_id]
-        questions = self._generate_questions(subject_id, difficulty, count=10, topics=focus_topics)
+        
+        # Try to use LLM if available
+        if self.llm.is_available():
+            try:
+                llm_quiz = await self.llm.generate_quiz(subject_id, difficulty, num_questions=10)
+                questions = llm_quiz.get("questions", [])
+            except Exception as e:
+                print(f"LLM quiz generation failed, falling back to template: {e}")
+                questions = self._generate_questions(subject_id, difficulty, count=10, topics=focus_topics)
+        else:
+            questions = self._generate_questions(subject_id, difficulty, count=10, topics=focus_topics)
         
         return {
             "quiz_id": f"quiz_{datetime.utcnow().timestamp()}",

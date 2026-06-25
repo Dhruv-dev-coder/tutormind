@@ -10,8 +10,12 @@ export default function LoginPage(){
   const handleSubmit = async (e) => {
     e.preventDefault()
     try{
-      await authService.signInWithEmail(email, password)
-      navigate('/dashboard')
+      const user = await authService.signInWithEmail(email, password)
+      if (user && user.is_first_time) {
+        navigate('/onboarding')
+      } else {
+        navigate('/dashboard')
+      }
     }catch(err){
       alert('Login failed')
     }
@@ -19,8 +23,12 @@ export default function LoginPage(){
 
   const handleGoogle = async () => {
     try{
-      await authService.signInWithGoogle()
-      navigate('/dashboard')
+      const user = await authService.signInWithGoogle()
+      if (user && user.is_first_time) {
+        navigate('/onboarding')
+      } else {
+        navigate('/dashboard')
+      }
     }catch(err){
       alert('Google sign-in failed')
     }

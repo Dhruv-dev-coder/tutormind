@@ -12,3 +12,6 @@ pytest
 httpx
 google-genai
 requests
+openai
+tavily-python
+google-api-python-client

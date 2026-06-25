@@ -11,8 +11,12 @@ export default function RegisterPage(){
   const handleSubmit = async (e) => {
     e.preventDefault()
     try{
-      await authService.signUpWithEmail(email, password, { displayName: name })
-      navigate('/dashboard')
+      const user = await authService.signUpWithEmail(email, password, { displayName: name })
+      if (user && user.is_first_time) {
+        navigate('/onboarding')
+      } else {
+        navigate('/dashboard')
+      }
     }catch(err){
       // show Firebase/backend error to help debugging
       const msg = err?.message || (err?.response && err.response.data) || 'Registration failed'
