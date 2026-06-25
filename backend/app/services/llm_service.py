@@ -57,13 +57,22 @@ class LLMService:
     async def _generate_with_google(self, prompt: str, system_prompt: str = None, max_tokens: int = 1000) -> str:
         """Generate text using Google AI (Gemini) API."""
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=self.google_api_key)
+            from google import genai
+            from google.genai import types
             
-            model = genai.GenerativeModel(self.model)
+            client = genai.Client(api_key=self.google_api_key)
             
-            full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-            response = model.generate_content(full_prompt)
+            config = {}
+            if system_prompt:
+                config["system_instruction"] = system_prompt
+            if max_tokens:
+                config["max_output_tokens"] = max_tokens
+                
+            response = client.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=types.GenerateContentConfig(**config) if config else None
+            )
             
             return response.text
         except Exception as e:

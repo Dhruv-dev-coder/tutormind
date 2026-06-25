@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -5,8 +6,18 @@ from app.api import auth, student
 from app.api import planner, teaching, quiz, rag
 from app.api import classroom, notes, roadmap
 from app.api import notifications, analytics, mcp, onboarding
+from app.services.firebase import initialize_firebase
 
-app = FastAPI(title="TutorMind API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        initialize_firebase()
+    except Exception:
+        # log initialization failure; continue so server stays up for development
+        pass
+    yield
+
+app = FastAPI(title="TutorMind API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

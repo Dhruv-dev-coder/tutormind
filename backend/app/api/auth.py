@@ -8,15 +8,6 @@ from datetime import datetime
 router = APIRouter()
 
 
-@router.on_event("startup")
-async def init_firebase():
-    try:
-        initialize_firebase()
-    except Exception:
-        # log initialization failure; continue so server stays up for development
-        pass
-
-
 @router.get('/status')
 def status():
     return {"auth": "ready"}
