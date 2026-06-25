@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import aiService from '../services/aiService'
 import { getStudentId } from '../utils/userUtils'
 
@@ -7,12 +7,20 @@ export default function NotesReview() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [topic, setTopic] = useState('')
-  const [allNotes, setAllNotes] = useState([])
+  const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [summarizing, setSummarizing] = useState(false)
 
-  const fetchNotes = useCallback(async (topicValue) => {
+  useEffect(() => {
+    const topicParam = searchParams.get('topic')
+    if (topicParam) {
+      setTopic(topicParam)
+      fetchNotes(topicParam)
+    }
+  }, [searchParams])
+
+  const fetchNotes = async (topicValue) => {
     const studentId = getStudentId()
     if (!studentId) {
       setError('Please sign in to view notes.')
@@ -23,30 +31,19 @@ export default function NotesReview() {
     setError(null)
     try {
       const resp = await aiService.getNotes(studentId, topicValue || undefined)
-      setAllNotes(resp.notes || [])
+      setNotes(resp.notes || [])
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || 'Failed to load notes')
     } finally {
       setLoading(false)
     }
-  }, [])
-
-  useEffect(() => {
-    const topicParam = searchParams.get('topic')
-    if (topicParam) {
-      setTopic(topicParam)
-    }
-    fetchNotes(topicParam || null)
-  }, [searchParams, fetchNotes])
+  }
 
   const handleSearch = (e) => {
     e.preventDefault()
-    const trimmed = topic.trim()
-    if (trimmed) {
-      navigate(`/notes/review?topic=${encodeURIComponent(trimmed)}`)
-    } else {
-      navigate('/notes/review')
-      fetchNotes(null)
+    if (topic.trim()) {
+      navigate(`/notes/review?topic=${encodeURIComponent(topic.trim())}`)
+      fetchNotes(topic.trim())
     }
   }
 
@@ -69,16 +66,13 @@ export default function NotesReview() {
         summary: summaryText,
       }, note.lesson)
 
-      await fetchNotes(searchParams.get('topic') || null)
+      await fetchNotes(note.topic)
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || 'Failed to summarize notes')
     } finally {
       setSummarizing(false)
     }
   }
-
-  const topicFilter = searchParams.get('topic')
-  const notes = allNotes
 
   return (
     <div>
@@ -91,7 +85,7 @@ export default function NotesReview() {
         <input
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
-          placeholder="Filter by topic (leave empty for all notes)..."
+          placeholder="Search by topic..."
           className="flex-1 p-2 rounded border bg-gray-700 text-white border-gray-600"
         />
         <button
@@ -103,16 +97,6 @@ export default function NotesReview() {
         </button>
       </form>
 
-      {topicFilter && (
-        <button
-          type="button"
-          onClick={() => { setTopic(''); navigate('/notes/review'); fetchNotes(null) }}
-          className="mt-2 text-sm text-indigo-400 hover:text-indigo-300"
-        >
-          Show all notes
-        </button>
-      )}
-
       {error && (
         <div className="mt-4 max-w-2xl p-3 bg-red-900/40 border border-red-700 rounded text-red-200 text-sm">
           {error}
@@ -123,24 +107,17 @@ export default function NotesReview() {
         <p className="mt-8 text-gray-400">Loading notes...</p>
       )}
 
-      {!loading && notes.length === 0 && !error && (
+      {!loading && notes.length === 0 && topic && !error && (
         <div className="mt-8 p-6 bg-gray-800 rounded-lg text-center max-w-2xl">
-          <p className="text-gray-400">
-            {topicFilter
-              ? `No notes found for "${topicFilter}".`
-              : 'No notes yet. Complete an AI Classroom session to generate notes automatically.'}
-          </p>
-          <Link
-            to={topicFilter ? `/ai-classroom?topic=${encodeURIComponent(topicFilter)}` : '/ai-classroom'}
-            className="inline-block mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded"
+          <p className="text-gray-400">No notes found for &ldquo;{topic}&rdquo;.</p>
+          <button
+            type="button"
+            onClick={() => navigate(`/ai-classroom?topic=${encodeURIComponent(topic)}`)}
+            className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded"
           >
             Start a Classroom Session
-          </Link>
+          </button>
         </div>
-      )}
-
-      {!loading && notes.length > 0 && (
-        <p className="mt-4 text-gray-400 text-sm">{notes.length} note{notes.length !== 1 ? 's' : ''} found</p>
       )}
 
       <div className="mt-8 space-y-6 max-w-3xl">
@@ -167,7 +144,7 @@ export default function NotesReview() {
               <div key={i} className="mt-4">
                 <h4 className="text-indigo-300 font-medium">{section.heading}</h4>
                 <ul className="list-disc list-inside text-gray-300 text-sm mt-1 space-y-1">
-                  {section.points?.filter(Boolean).map((point, j) => (
+                  {section.points?.map((point, j) => (
                     <li key={j}>{point}</li>
                   ))}
                 </ul>

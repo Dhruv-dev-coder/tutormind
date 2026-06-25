@@ -39,9 +39,6 @@ export default function QuizCenter() {
     try {
       const resp = await aiService.generateQuiz(studentId, subject.trim(), difficulty)
       setQuiz(resp.quiz)
-      if (resp.quiz?.source === 'template' && resp.quiz?.llm_error) {
-        setError('AI quiz generation failed — using basic questions. Check Gemini API quota and restart backend.')
-      }
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || 'Failed to generate quiz')
     } finally {

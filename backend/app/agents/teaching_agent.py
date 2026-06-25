@@ -5,7 +5,6 @@ Integrates RAG for grounded responses and MCP tools for external resources.
 """
 from typing import Dict, Any, List
 from datetime import datetime
-import logging
 from app.mcp import get_tavily_mcp, get_youtube_mcp
 from app.agents.learning_intelligence import (
     build_lesson_path,
@@ -15,9 +14,6 @@ from app.agents.learning_intelligence import (
     roadmap_topics,
     topic_title,
 )
-from app.services import llm_service
-
-logger = logging.getLogger(__name__)
 
 
 class TeachingAgent:
@@ -28,89 +24,12 @@ class TeachingAgent:
     async def teach_concept(self, student_id: str, topic: str, level: str = 'beginner', roadmap: Dict[str, Any] = None) -> Dict[str, Any]:
         """Teach a concept with comprehensive explanations and examples"""
         level = normalize_level(level)
-        llm_error = None
-
-        if llm_service.is_configured():
-            try:
-                return await self._teach_with_llm(student_id, topic, level, roadmap)
-            except Exception as exc:
-                llm_error = str(exc)
-                logger.warning("LLM teaching failed for %s: %s", topic, exc)
-
-        result = await self._teach_with_templates(student_id, topic, level, roadmap)
-        if llm_error:
-            result["llm_error"] = llm_error
-        return result
-
-    async def _teach_with_llm(self, student_id: str, topic: str, level: str, roadmap: Dict[str, Any] = None) -> Dict[str, Any]:
-        roadmap_context = ""
-        if roadmap:
-            topics = roadmap_topics(roadmap)[:8]
-            if topics:
-                roadmap_context = f"Student roadmap topics: {', '.join(topics)}."
-
-        core_prompt = f"""Create lesson core content for "{topic}" at {level} level.
-{roadmap_context}
-
-Return JSON:
-{{
-  "explanation": {{
-    "overview": "2-3 sentence introduction",
-    "definition": "clear definition",
-    "why_important": "why this matters",
-    "real_world_applications": ["app1", "app2", "app3"],
-    "prerequisites": ["prereq1", "prereq2"],
-    "difficulty_level": "{level}"
-  }},
-  "learning_objectives": ["objective1", "objective2", "objective3"],
-  "key_points": ["point1", "point2", "point3", "point4"]
-}}
-
-Write detailed, topic-specific content. No generic placeholders."""
-
-        practice_prompt = f"""Create 3 worked examples and 3 practice exercises for "{topic}" at {level} level.
-
-Return JSON:
-{{
-  "examples": [
-    {{"example_number": 1, "problem": "...", "solution_steps": ["..."], "answer": "...", "explanation": "..."}}
-  ],
-  "exercises": [
-    {{"exercise_number": 1, "difficulty": "{level}", "problem": "...", "hints": ["..."], "time_estimate": "5-10 minutes"}}
-  ]
-}}
-
-Provide exactly 3 examples and 3 exercises. Be specific to {topic}."""
-
-        core_data = await llm_service.generate_json(core_prompt)
-        practice_data = await llm_service.generate_json(practice_prompt)
-        resources = await self._find_resources(topic)
-        lesson_path = build_lesson_path(topic, level)
-
-        return {
-            "student_id": student_id,
-            "topic": topic,
-            "level": level,
-            "timestamp": datetime.utcnow().isoformat(),
-            "explanation": core_data.get("explanation", {}),
-            "learning_objectives": core_data.get("learning_objectives") or infer_learning_objectives(topic, level),
-            "lesson_path": lesson_path,
-            "key_points": core_data.get("key_points", []),
-            "examples": practice_data.get("examples", []),
-            "exercises": practice_data.get("exercises", []),
-            "resources": resources,
-            "next_topics": self._suggest_next_topics(topic, roadmap),
-            "estimated_learning_time": f"{sum(step['minutes'] for step in lesson_path)} minutes",
-            "source": "gemini",
-        }
-
-    async def _teach_with_templates(self, student_id: str, topic: str, level: str, roadmap: Dict[str, Any] = None) -> Dict[str, Any]:
         explanation = self._generate_explanation(topic, level)
         examples = await self.generate_examples(topic, count=3)
         resources = await self._find_resources(topic)
         exercises = self._generate_exercises(topic, level)
         lesson_path = build_lesson_path(topic, level)
-
+        
         return {
             "student_id": student_id,
             "topic": topic,
@@ -124,8 +43,7 @@ Provide exactly 3 examples and 3 exercises. Be specific to {topic}."""
             "exercises": exercises,
             "resources": resources,
             "next_topics": self._suggest_next_topics(topic, roadmap),
-            "estimated_learning_time": f"{sum(step['minutes'] for step in lesson_path)} minutes",
-            "source": "template",
+            "estimated_learning_time": f"{sum(step['minutes'] for step in lesson_path)} minutes"
         }
 
     def _generate_explanation(self, topic: str, level: str) -> Dict[str, Any]:

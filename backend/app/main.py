@@ -1,8 +1,3 @@
-from dotenv import load_dotenv
-
-load_dotenv(override=True)
-
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -52,11 +47,5 @@ app.include_router(onboarding.router, prefix="/api/onboarding")
 app.include_router(mcp.router, prefix="/api")
 
 @app.get("/api/health")
-async def health():
-    from app.services import llm_service
-    return {
-        "status": "ok",
-        "llm_configured": llm_service.is_configured(),
-        "llm_models": llm_service.MODEL_FALLBACKS,
-        "llm_last_error": llm_service.get_last_error(),
-    }
+def health():
+    return {"status":"ok"}

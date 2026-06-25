@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, HTTPException
 
 from app.agents.teaching_agent import TeachingAgent
 from app.api.notes import build_structured_notes
-from app.api.utils import student_selector, normalize_topic
+from app.api.utils import student_selector
 from app.database import db
 
 router = APIRouter()
@@ -15,7 +15,7 @@ teaching = TeachingAgent()
 @router.post("/generate")
 async def generate_classroom_session(payload: Dict[str, Any] = Body(...)):
     student_id = payload.get("student_id")
-    topic = normalize_topic(payload.get("topic") or "")
+    topic = (payload.get("topic") or "").strip()
     level = payload.get("level", "beginner")
 
     if not student_id:

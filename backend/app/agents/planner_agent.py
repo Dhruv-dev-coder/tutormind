@@ -161,11 +161,10 @@ class PlannerAgent:
 
     def _derive_topic(self, chapter: Dict[str, Any]) -> str:
         """Derive a teachable topic from chapter metadata."""
-        from app.api.utils import normalize_topic
         topics = chapter.get("topics") or []
         if topics:
-            return normalize_topic(topics[0])
-        return normalize_topic(chapter.get("name", "General Review"))
+            return topics[0]
+        return chapter.get("name", "General Review")
 
     def _generate_daily_plan(self, chapters: List[Dict[str, Any]], num_days: int) -> List[Dict[str, Any]]:
         """Create daily breakdown with structured session metadata for interactivity."""

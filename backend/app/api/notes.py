@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Query
 
-from app.api.utils import student_selector, normalize_topic, topic_query
+from app.api.utils import student_selector
 from app.database import db
 
 router = APIRouter()
@@ -47,7 +47,7 @@ def build_structured_notes(topic: str, lesson: Dict[str, Any] = None, notes: Dic
 @router.post("/save")
 async def save_notes(payload: Dict[str, Any] = Body(...)):
     student_id = payload.get("student_id")
-    topic = normalize_topic(payload.get("topic") or "")
+    topic = (payload.get("topic") or "").strip()
 
     if not student_id:
         raise HTTPException(status_code=400, detail="student_id required")
@@ -76,7 +76,7 @@ async def get_notes(
 ):
     query: Dict[str, Any] = {}
     if topic:
-        query.update(topic_query(topic))
+        query["topic"] = {"$regex": f"^{topic}$", "$options": "i"}
     if student_id:
         query["student_id"] = student_id
 
